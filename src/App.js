@@ -158,13 +158,14 @@ const App = () => {
 
     var doc = new jsPDF('l', 'mm', [50, 30])
     var countItems = calculateSum(data.order_items,'quantity');
-    var displayID = data.code.substring(0, data.code.indexOf('-'))
+    var displayIDFull = data.code.substring(data.code.indexOf('-')+1)
+    var displayID = data.code.substring(data.code.length-4)
 
     doc.setFont('arial', 'bold')
     doc.setFontSize(10)
 
-    doc.text('SHOPEE: ' + displayID, 2, 4)
-    doc.text('Qty: ' + countItems, 30, 4)
+    doc.text('SHOPEE_' + displayIDFull.substring(0,displayIDFull.length-4) + '-' + displayID, 2, 4)
+    doc.text('Qty: ' + countItems, 36, 4)
     doc.setLineWidth(0.2)
     doc.line(0, 4.7, 50, 4.7)
     doc.line(0, 25, 50, 25)
@@ -196,7 +197,7 @@ const App = () => {
         doc.setFont('arial', 'bold')
       doc.setFontSize(10)
 
-      doc.text('SHOPEE: ' + displayID , 2, 4)
+      doc.text('SHOPEE_' + displayID , 2, 4)
       doc.text('Qty: ' + countItems, 30, 4)
       doc.setLineWidth(0.2)
       doc.line(0, 4.7, 50, 4.7)
@@ -242,7 +243,7 @@ const App = () => {
         doc.line(0, 25, 50, 25)
 
         doc.text(
-          'SHOPEE: ' +
+          'SHOPEE_' +
             displayID +
             ' (' +
             itemCount +
