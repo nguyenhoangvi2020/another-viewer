@@ -19,6 +19,14 @@ import moment from 'moment'
 const { Header, Content, Footer } = Layout
 const { Paragraph, Text } = Typography
 
+function calculateSum(array, property) {
+  const total = array.reduce((accumulator, object) => {
+    return accumulator + object[property];
+  }, 0);
+
+  return total;
+}
+
 const client = createDirectus(
   'https://directus-production-c94b.up.railway.app',
 ).with(rest())
@@ -30,67 +38,6 @@ var callAddFont = function () {
   this.addFont('arial-normal.ttf', 'arial', 'normal')
 }
 jsPDF.API.events.push(['addFonts', callAddFont])
-
-
-
-/**
- * @function getDistance()
- * Calculates the distance between two address
- * 
- * @params
- * $addressFrom - Starting point
- * $addressTo - End point
- * $unit - Unit type
- * 
- * @author CodexWorld
- * @url https://www.codexworld.com
- *
- */
-// function getDistance($addressFrom, $addressTo, $unit = ''){
-//   // Google API key
-//   $apiKey = 'AIzaSyATFatj12SZ1yEdIQh1bFm8yxtrtvLEA6o';
-  
-//   // Change address format
-//   $formattedAddrFrom    = str_replace(' ', '+', $addressFrom);
-//   $formattedAddrTo     = str_replace(' ', '+', $addressTo);
-  
-//   // Geocoding API request with start address
-//   $geocodeFrom = file_get_contents('https://maps.googleapis.com/maps/api/geocode/json?address='.$formattedAddrFrom.'&sensor=false&key='.$apiKey);
-//   $outputFrom = json_decode($geocodeFrom);
-//   if(!empty($outputFrom->error_message)){
-//       return $outputFrom->error_message;
-//   }
-  
-//   // Geocoding API request with end address
-//   $geocodeTo = file_get_contents('https://maps.googleapis.com/maps/api/geocode/json?address='.$formattedAddrTo.'&sensor=false&key='.$apiKey);
-//   $outputTo = json_decode($geocodeTo);
-//   if(!empty($outputTo->error_message)){
-//       return $outputTo->error_message;
-//   }
-  
-//   // Get latitude and longitude from the geodata
-//   $latitudeFrom    = $outputFrom->results[0]->geometry->location->lat;
-//   $longitudeFrom    = $outputFrom->results[0]->geometry->location->lng;
-//   $latitudeTo        = $outputTo->results[0]->geometry->location->lat;
-//   $longitudeTo    = $outputTo->results[0]->geometry->location->lng;
-  
-//   // Calculate distance between latitude and longitude
-//   $theta    = $longitudeFrom - $longitudeTo;
-//   $dist    = sin(deg2rad($latitudeFrom)) * sin(deg2rad($latitudeTo)) +  cos(deg2rad($latitudeFrom)) * cos(deg2rad($latitudeTo)) * cos(deg2rad($theta));
-//   $dist    = acos($dist);
-//   $dist    = rad2deg($dist);
-//   $miles    = $dist * 60 * 1.1515;
-  
-//   // Convert unit and return distance
-//   $unit = strtoupper($unit);
-//   if($unit == "K"){
-//       return round($miles * 1.609344, 2).' km';
-//   }elseif($unit == "M"){
-//       return round($miles * 1609.344, 2).' meters';
-//   }else{
-//       return round($miles, 2).' miles';
-//   }
-// }
 
 const App = () => {
   const [orders, setOrders] = useState([])
@@ -117,12 +64,12 @@ const App = () => {
     console.log('fetching..')
 
     const result = await client.request(
-      readItems('orders', { sort: ['-createdAt'], limit: 20 }),
+      readItems('shopeeOrders', { sort: ['-date_created'], limit: 20 }),
     )
 
     //Get important note
     for (let i = 0; i < result.length; i++) {
-      if (i>3) break;
+      if (i>-1) break;
 
       var order = result[i];
     
@@ -159,11 +106,11 @@ const App = () => {
     console.log('updateing..' + lastestOrder.displayID + " --- " + lastestOrder.createdAt) 
 
     const newOrders = await client.request(
-      readItems('orders', { 
-        sort: ['-createdAt'],         
+      readItems('shopeeOrders', { 
+        sort: ['date_created'],         
         filter:{
-          'createdAt': {
-            "_gt" : lastestOrder.createdAt
+          'date_created': {
+            "_gt" : lastestOrder.date_created
           }
         }
       }),
@@ -171,7 +118,7 @@ const App = () => {
 
     //Get important note
       for (let i = 0; i < newOrders.length; i++) {
-        //if (i>10) break;
+        if (i>-1) break;
 
         var order = newOrders[i];
         
@@ -210,12 +157,14 @@ const App = () => {
     console.log(data)
 
     var doc = new jsPDF('l', 'mm', [50, 30])
+    var countItems = calculateSum(data.order_items,'quantity');
+    var displayID = data.code.substring(0, data.code.indexOf('-'))
 
     doc.setFont('arial', 'bold')
     doc.setFontSize(10)
 
-    doc.text('GRAB: ' + data.displayID, 2, 4)
-    doc.text('Qty: ' + data.itemInfo.count, 30, 4)
+    doc.text('SHOPEE: ' + displayID, 2, 4)
+    doc.text('Qty: ' + countItems, 30, 4)
     doc.setLineWidth(0.2)
     doc.line(0, 4.7, 50, 4.7)
     doc.line(0, 25, 50, 25)
@@ -223,9 +172,11 @@ const App = () => {
     //doc.text('Grab Pay=' + data.fare.totalDisplay + '-25%', 2, 28)
     doc.text('Hotline(zalo) - 0777.369.959', 2, 28)
 
+    
+
     doc.setFontSize(6)
     doc.setFont('arial', 'normal')
-    var driverName = data.driver?data.driver.name:"............"
+    var driverName = data.assignee?data.assignee.name:"............"
     doc.text('Tài xế: ' + driverName, 3, 7)
     // doc.text('Phone: ' + data.driver.mobileNumber, 3, 9)
 
@@ -238,14 +189,15 @@ const App = () => {
     //doc.text(12, 17, 'CHABAR cảm ơn quý khách rất nhiều!')
     doc.text(3, 12, 'CHABAR Cảm ơn quý khách rất nhiều! Chúng mình luôn lắng nghe ♡', { maxWidth: 44 })
   
-    if (data.eater.comment) {
+    if (data.notes.order_note) {
+      var eaterComment =  data.notes.order_note;
       
         doc.addPage('l', 'mm', [50, 30])
         doc.setFont('arial', 'bold')
       doc.setFontSize(10)
 
-      doc.text('GRAB: ' + data.displayID, 2, 4)
-      doc.text('Qty: ' + data.itemInfo.count, 30, 4)
+      doc.text('SHOPEE: ' + displayID , 2, 4)
+      doc.text('Qty: ' + countItems, 30, 4)
       doc.setLineWidth(0.2)
       doc.line(0, 4.7, 50, 4.7)
       doc.line(0, 25, 50, 25)
@@ -257,18 +209,18 @@ const App = () => {
       // doc.setFont('arial', 'normal')
       // doc.text('LƯU Ý KHÁCH NOTE:', 2.7, 8.5)
       
-      doc.setFontSize(7)
+      doc.setFontSize(9)
       doc.setFont('arial', 'normal')
-      doc.text('Team CHABAR lưu ý!', 9, 24)
+      doc.text('Lưu ý của khách!', 11, 24)
       
       //doc.setFont('times', 'italic')
       doc.setFont('arial', 'normal')
       doc.setFontSize(8)
-      doc.text(3, 9, "GHI CHÚ: '  " + data.eater.comment + " '", { maxWidth: 44 })
+      doc.text(3, 9, eaterComment , { maxWidth: 44 })
     } 
 
     var itemCount = 0
-    data.itemInfo.items.forEach((item, index) => {
+    data.order_items.forEach((item, index) => {
       for (let i = 1; i <= item.quantity; i++) {
         itemCount++
 
@@ -276,11 +228,11 @@ const App = () => {
         doc.setFont('arial', 'normal')
         doc.setFontSize(8)
         if (item.quantity>1){
-          doc.text(2, 4, i + '_' + item.quantity + 'x' + item.name, {
+          doc.text(2, 4, i + '_' + item.quantity + 'x' + item.dish.name, {
             maxWidth: 46,
           })
         } else{
-          doc.text(2, 4, item.quantity + 'x' + item.name, {
+          doc.text(2, 4, item.quantity + 'x' + item.dish.name, {
             maxWidth: 46,
           })
         }
@@ -290,26 +242,26 @@ const App = () => {
         doc.line(0, 25, 50, 25)
 
         doc.text(
-          'GRAB: ' +
-            data.displayID +
+          'SHOPEE: ' +
+            displayID +
             ' (' +
             itemCount +
             '/' +
-            data.itemInfo.count +
+            countItems +
             ') ',
           2,
           28,
         )
 
         var toppings = '';
-        if (item.comment) toppings += 'Note: ' + item.comment + '\n'
+        if (item.note) toppings += 'Note: ' + item.note + '\n'
         // eslint-disable-next-line no-loop-func
-        item.modifierGroups.forEach((toppingGroup) => {
+        item.options_groups.forEach((toppingGroup) => {
           //toppings += '+ ' + toppingGroup.modifierGroupName + '\n'
-          toppingGroup.modifiers.forEach((toppingItem) => {
+          toppingGroup.options.forEach((toppingItem) => {
             toppings +=
               '    -' +
-              toppingItem.modifierName +
+              toppingItem.name +
               ' x ' +
               toppingItem.quantity +
               '\n'
@@ -321,6 +273,8 @@ const App = () => {
         doc.text(4, 9, toppings, { maxWidth: 44 })
       }
     })
+
+  
 
     doc.autoPrint()
     var string = doc.output('datauristring')
@@ -347,14 +301,14 @@ const App = () => {
           zIndex: 1,
           width: '100%',          
           alignItems: 'center',   
-          background:'	#9dc451',       
+          background:'linear-gradient(-180deg,#f53d2d,#f63)',       
         }}
         theme= 'light'
       >
         <div className="demo-logo" />
         
         <Button type="primary" loading={loadings[0]} onClick={() => enterLoading(0)}>
-          Update Now
+          SHOPEE - Update Now
         </Button>
 
       </Header>
@@ -386,14 +340,14 @@ const App = () => {
                       margin: '5px 0 0 0'
                     }}
                     title={order.displayID}
-                    extra={moment
-                      .utc(order.createdAt)
-                      .local()
-                      .format('HH:mm DD/MM')}
+                    
                     bordered={false}
                   >       
-                  <UserAddOutlined /> {order.eaterName}<br/>
-                 
+                  <UserAddOutlined /> {order.eaterAddressKeywords}<br/>
+                  <UserAddOutlined /> {moment.unix(order.orderTime)
+                      .local()
+                      .format('HH:mm DD/MM')}<br/>
+                  
                     {/* <PhoneOutlined />{order.eaterMobileNumber}<br/>     */}
                     <Paragraph style={{
                       backgroundColor: '#ff7a45'
@@ -437,9 +391,11 @@ const App = () => {
                         <Space align="center"> 
                           <Button
                             type="primary"
+                            danger={order.orderJsonData.shipping_info.distance>3.5}
+                            
                             onClick={() => printOrderLabels(order.orderJsonData)}
                           >
-                            Print Label
+                           {order.orderJsonData.shipping_info.distance}km - Print Label
                           </Button>
                         </Space>
                         </div>
@@ -450,8 +406,9 @@ const App = () => {
                     {/* Tài xế: {order.driverMobileNumber}<br/> */}
                     
                     
-                    <Tag color="magenta">{order.orderJsonData.itemInfo.count} Món</Tag>
-      <Tag color="red">{order.totalDisplayX} vnđ</Tag>
+                    <Tag color="magenta">{calculateSum(order.orderJsonData.order_items,'quantity')} Món</Tag>
+      
+      <Tag color="red"><s>{order.orderJsonData.order_value_amount}</s> {order.orderJsonData.total_value_amount} vnđ</Tag>
                     
 
       
