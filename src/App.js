@@ -103,11 +103,11 @@ const App = () => {
     console.log('updateing..' + orders.length)
     
     const lastestOrder = orders[0];
-    console.log('updateing..' + lastestOrder.displayID + " --- " + lastestOrder.createdAt) 
+    console.log('updateing..' + lastestOrder.displayID + " --- " + lastestOrder.date_created) 
 
     const newOrders = await client.request(
       readItems('shopeeOrders', { 
-        sort: ['date_created'],         
+        sort: ['-date_created'],         
         filter:{
           'date_created': {
             "_gt" : lastestOrder.date_created
