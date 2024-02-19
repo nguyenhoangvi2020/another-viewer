@@ -28,7 +28,7 @@ function calculateSum(array, property) {
 }
 
 const client = createDirectus(
-  'https://directus-production-c94b.up.railway.app',
+  'https://directus-starter-production.up.railway.app',
 ).with(rest())
 
 var font =
